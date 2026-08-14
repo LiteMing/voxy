@@ -417,25 +417,43 @@ public class Mapper {
                     throw new IllegalStateException("Encoded id != expected id");
                 }
                 var bsc = compound.getCompound("block_state");
+                var originalState = bsc.copy();
                 var state = BlockState.CODEC.parse(NbtOps.INSTANCE, bsc);
                 if (state.error().isPresent()) {
                     Logger.info("Could not decode blockstate, attempting fixes, error: "+ state.error().get().message());
                     bsc = (CompoundTag) DataFixers.getDataFixer().update(References.BLOCK_STATE, new Dynamic<>(NbtOps.INSTANCE,bsc),0, SharedConstants.getCurrentVersion().getDataVersion().getVersion()).getValue();
                     state = BlockState.CODEC.parse(NbtOps.INSTANCE, bsc);
                     if (state.error().isPresent()) {
-                        Logger.error("Could not decode blockstate setting to air. id:" + id + " error: " + state.error().get().message());
-                        return new StateEntry(id, Blocks.AIR.defaultBlockState());
+                        BlockState recovered = MissingBlockStateRecovery.recover(originalState);
+                        Logger.warn("Could not decode blockstate " + originalState.getString("Name")
+                                + "; using visual fallback " + recovered);
+                        forceResave[0] = true;
+                        return new StateEntry(id, recovered);
                     } else {
                         Logger.info("Fixed blockstate to: " + state.getOrThrow(false, Logger::error));
                         forceResave[0] |= true;
-                        return new StateEntry(id, state.getOrThrow(false, Logger::error));
+                        return recoverUnexpectedAir(id, originalState,
+                                state.getOrThrow(false, Logger::error), forceResave);
                     }
                 } else {
-                    return new StateEntry(id, state.getOrThrow(false, Logger::error));
+                    return recoverUnexpectedAir(id, originalState,
+                            state.getOrThrow(false, Logger::error), forceResave);
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        private static StateEntry recoverUnexpectedAir(int id, CompoundTag encodedState,
+                                                       BlockState decoded, boolean[] forceResave) {
+            if (!decoded.isAir() || MissingBlockStateRecovery.isEncodedAir(encodedState)) {
+                return new StateEntry(id, decoded);
+            }
+            BlockState recovered = MissingBlockStateRecovery.recover(encodedState);
+            Logger.warn("Blockstate " + encodedState.getString("Name")
+                    + " resolved to air; using visual fallback " + recovered);
+            forceResave[0] = true;
+            return new StateEntry(id, recovered);
         }
     }
 
