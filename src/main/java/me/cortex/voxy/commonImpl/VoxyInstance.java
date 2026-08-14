@@ -142,23 +142,25 @@ public abstract class VoxyInstance {
             return world;
         }
         long stamp = this.activeWorldLock.writeLock();
+        try {
+            if (!this.isRunning) {
+                Logger.error("Tried getting world object on voxy instance but its not running");
+                return null;
+            }
 
-        if (!this.isRunning) {
-            Logger.error("Tried getting world object on voxy instance but its not running");
+            world = this.activeWorlds.get(identifier);
+            if (world == null) {
+                //Create world here
+                world = this.createWorld(identifier);
+            }
+            world.markActive();
+
+            if (incrementRef) world.acquireRef();
+        } finally {
+            // World construction can fail while loading an incompatible cache.
+            // Never strand the render thread behind its own write lock.
             this.activeWorldLock.unlockWrite(stamp);
-            return null;
         }
-
-        world = this.activeWorlds.get(identifier);
-        if (world == null) {
-            //Create world here
-            world = this.createWorld(identifier);
-        }
-        world.markActive();
-
-        if (incrementRef) world.acquireRef();
-
-        this.activeWorldLock.unlockWrite(stamp);
         identifier.cachedEngineObject = new WeakReference<>(world);
         return world;
     }
