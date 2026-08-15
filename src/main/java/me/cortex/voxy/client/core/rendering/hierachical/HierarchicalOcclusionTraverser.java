@@ -2,6 +2,7 @@ package me.cortex.voxy.client.core.rendering.hierachical;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import me.cortex.voxy.client.RenderStatistics;
+import me.cortex.voxy.client.DynamicStageCompat;
 import me.cortex.voxy.client.config.VoxyConfig;
 import me.cortex.voxy.client.core.AbstractRenderPipeline;
 import me.cortex.voxy.client.core.gl.GlBuffer;
@@ -226,6 +227,8 @@ public class HierarchicalOcclusionTraverser {
 
         //Put the render distance here so that it can generate a correct circle, TODO: make it not top level section sized
         MemoryUtil.memPutFloat(ptr, (float) Math.pow(VoxyConfig.CONFIG.sectionRenderDistance*16*32,2));ptr += 4;
+
+        MemoryUtil.memPutInt(ptr, DynamicStageCompat.preserveCameraSection() ? 1 : 0); ptr += 4;
 
 
     }

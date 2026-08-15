@@ -2,6 +2,7 @@ package me.cortex.voxy.client.core.rendering.section.backend.mdic;
 
 
 import me.cortex.voxy.client.RenderStatistics;
+import me.cortex.voxy.client.DynamicStageCompat;
 import me.cortex.voxy.client.VoxyClient;
 import me.cortex.voxy.client.core.AbstractRenderPipeline;
 import me.cortex.voxy.client.core.gl.Capabilities;
@@ -161,6 +162,7 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
         }
         MemoryUtil.memPutInt(ptr, viewport.frameId&0x7fffffff); ptr += 4;
         viewport.innerTranslation.getToAddress(ptr); ptr += 4*3;
+        MemoryUtil.memPutInt(ptr, DynamicStageCompat.preserveCameraSection() ? 1 : 0); ptr += 4;
 
         UploadStream.INSTANCE.commit();
     }

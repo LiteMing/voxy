@@ -63,7 +63,9 @@ void main() {
     uint dat = visibilityData[sectionId];
 
     //if the section was visible this frame
-    bool shouldRender = (dat&0x7fffffffu) == frameId;
+    bool cameraSection = all(equal(ipos, baseSectionPos>>detail));
+    bool shouldRender = (dat&0x7fffffffu) == frameId
+            || (preserveCameraSection != 0u && cameraSection);
     bool renderTemporally = (dat&0x80000000u)==0;// means, if it was not visible last frame
 
 

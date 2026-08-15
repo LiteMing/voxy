@@ -18,6 +18,7 @@ layout(binding = SCENE_UNIFORM_BINDING, std140) uniform SceneUniform {
     uint frameId;
     uint requestQueueSize;
     float renderDistance;
+    uint preserveCameraSection;
 };
 
 #import <voxy:lod/hierarchical/queue.glsl>
@@ -125,7 +126,9 @@ void traverse(in UnpackedNode node) {
     setupScreenspace(node);
     //debugDumpNode(node);
 
-    if (outsideFrustum() || isCulledByHiz()) {
+    bool cameraSection = all(equal(node.pos, camSecPos>>node.lodLevel));
+    if ((preserveCameraSection == 0u || !cameraSection)
+            && (outsideFrustum() || isCulledByHiz())) {
         //printf("culled");
     } else {
         //It is visible, TODO: maybe do a more detailed hiz test? (or make it so that )
