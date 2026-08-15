@@ -126,8 +126,12 @@ void traverse(in UnpackedNode node) {
     setupScreenspace(node);
     //debugDumpNode(node);
 
-    bool cameraSection = all(equal(node.pos, camSecPos>>node.lodLevel));
-    if ((preserveCameraSection == 0u || !cameraSection)
+    // Preserve the current node and its immediate neighbors while the
+    // hierarchical visibility pass catches up at a moving stage boundary.
+    ivec3 cameraSectionPos = camSecPos >> node.lodLevel;
+    ivec3 cameraSectionDelta = abs(node.pos - cameraSectionPos);
+    bool cameraNeighborhood = all(lessThanEqual(cameraSectionDelta, ivec3(1)));
+    if ((preserveCameraSection == 0u || !cameraNeighborhood)
             && (outsideFrustum() || isCulledByHiz())) {
         //printf("culled");
     } else {

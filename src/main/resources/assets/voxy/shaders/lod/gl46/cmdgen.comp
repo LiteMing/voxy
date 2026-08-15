@@ -62,10 +62,14 @@ void main() {
 
     uint dat = visibilityData[sectionId];
 
-    //if the section was visible this frame
-    bool cameraSection = all(equal(ipos, baseSectionPos>>detail));
+    // Keep a one-section neighborhood around the camera alive while the
+    // visibility result catches up. This covers both sides of a section
+    // boundary and avoids a one-frame hole during stage movement.
+    ivec3 cameraSectionPos = baseSectionPos >> detail;
+    ivec3 cameraSectionDelta = abs(ipos - cameraSectionPos);
+    bool cameraNeighborhood = all(lessThanEqual(cameraSectionDelta, ivec3(1)));
     bool shouldRender = (dat&0x7fffffffu) == frameId
-            || (preserveCameraSection != 0u && cameraSection);
+            || (preserveCameraSection != 0u && cameraNeighborhood);
     bool renderTemporally = (dat&0x80000000u)==0;// means, if it was not visible last frame
 
 
