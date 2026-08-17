@@ -26,11 +26,17 @@ public class RocksDBStorageBackend extends StorageBackend {
     private final ColumnFamilyHandle idMappings;
     private final ReadOptions sectionReadOps;
     private final WriteOptions sectionWriteOps;
+    private final boolean readOnly;
 
     //NOTE: closes in order
     private final List<AbstractImmutableNativeReference> closeList = new ArrayList<>();
 
     public RocksDBStorageBackend(String path) {
+        this(path, false);
+    }
+
+    /** Opens an existing Voxy database without allowing any cache or mapping writes. */
+    public RocksDBStorageBackend(String path, boolean readOnly) {
         /*
         var lockPath = new File(path).toPath().resolve("LOCK");
         if (Files.exists(lockPath)) {
@@ -95,9 +101,10 @@ public class RocksDBStorageBackend extends StorageBackend {
 
         try {
 
-            this.db = RocksDB.open(options,
-                    path, cfDescriptors,
-                    handles);
+            this.db = readOnly
+                    ? RocksDB.openReadOnly(options, path, cfDescriptors, handles)
+                    : RocksDB.open(options, path, cfDescriptors, handles);
+            this.readOnly = readOnly;
 
             this.sectionReadOps = new ReadOptions();
             this.sectionWriteOps = new WriteOptions();
@@ -114,7 +121,9 @@ public class RocksDBStorageBackend extends StorageBackend {
             this.worldSections = handles.get(1);
             this.idMappings = handles.get(2);
 
-            this.db.flushWal(true);
+            if (!readOnly) {
+                this.db.flushWal(true);
+            }
         } catch (RocksDBException e) {
             throw new RuntimeException(e);
         }
@@ -175,6 +184,7 @@ public class RocksDBStorageBackend extends StorageBackend {
 
     @Override
     public void setSectionData(long key, MemoryBuffer data) {
+        requireWritable();
         try (var stack = MemoryStack.stackPush()) {
             var keyBuff = stack.calloc(8);
             MemoryUtil.memPutLong(MemoryUtil.memAddress(keyBuff), Long.reverseBytes(swizzlePos(key)));
@@ -186,6 +196,7 @@ public class RocksDBStorageBackend extends StorageBackend {
 
     @Override
     public void deleteSectionData(long key) {
+        requireWritable();
         try {
             this.db.delete(this.worldSections, longToBytes(swizzlePos(key)));
         } catch (RocksDBException e) {
@@ -195,6 +206,7 @@ public class RocksDBStorageBackend extends StorageBackend {
 
     @Override
     public void putIdMapping(int id, ByteBuffer data) {
+        requireWritable();
         try {
             var buffer = new byte[data.remaining()];
             data.get(buffer);
@@ -219,6 +231,9 @@ public class RocksDBStorageBackend extends StorageBackend {
 
     @Override
     public void flush() {
+        if (this.readOnly) {
+            return;
+        }
         try {
             this.db.flushWal(true);
         } catch (RocksDBException e) {
@@ -240,6 +255,12 @@ public class RocksDBStorageBackend extends StorageBackend {
 
     private static byte[] intToBytes(int i) {
         return new byte[] {(byte)(i>>24), (byte)(i>>16), (byte)(i>>8), (byte) i};
+    }
+
+    private void requireWritable() {
+        if (this.readOnly) {
+            throw new IllegalStateException("Voxy storage was opened read-only");
+        }
     }
     private static int bytesToInt(byte[] i) {
         return (Byte.toUnsignedInt(i[0])<<24)|(Byte.toUnsignedInt(i[1])<<16)|(Byte.toUnsignedInt(i[2])<<8)|(Byte.toUnsignedInt(i[3]));
