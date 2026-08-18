@@ -37,7 +37,7 @@ void main() {
     vec3 offset = aabbOffset-EXPANSION;
     offset += vec3(gl_VertexID&1, (gl_VertexID>>2)&1, (gl_VertexID>>1)&1)*(size+2*EXPANSION);
 
-    gl_Position = preserveStageNearPlane(MVP * vec4(vec3(pos)+offset*(1<<detail),1));
+    gl_Position = MVP * vec4(vec3(pos)+offset*(1<<detail),1);
     gl_Position.z -= 0.000001f * gl_Position.w;
 
     #ifdef TAA

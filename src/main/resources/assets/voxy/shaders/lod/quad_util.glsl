@@ -155,7 +155,7 @@ vec4 getQuadCornerPos(in QuadData quad, uint cornerId) {
     vec3 point = quad.basePoint + swizzelDataAxis(quad.axis,vec3(quad.quadSizeAddin*cornerMask,0));
     vec4 pos = MVP * vec4(point, 1.0f);
     pos.xy += taaOffset*pos.w;
-    return preserveStageNearPlane(pos);
+    return pos;
 }
 
 #ifndef USE_NV_BARRY
