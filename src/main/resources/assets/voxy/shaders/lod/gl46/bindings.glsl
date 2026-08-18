@@ -6,6 +6,17 @@ layout(binding = 0, std140) uniform SceneUniform {
     uint preserveCameraSection;
 };
 
+vec4 preserveStageNearPlane(vec4 position) {
+    if (preserveCameraSection != 0u && position.w > 0.0f) {
+        // Keep stage LOD geometry just inside OpenGL's z >= -w near plane.
+        // The small inset prevents Voxy's final depth composite from treating
+        // the clamped fragment as an empty depth value.
+        const float NEAR_PLANE_INSET = 1.0f / 65536.0f;
+        position.z = max(position.z, (-1.0f + NEAR_PLANE_INSET) * position.w);
+    }
+    return position;
+}
+
 //TODO: see if making the stride 2*4*4 bytes or something cause you get that 16 byte write
 struct DrawCommand {
     uint  count;
