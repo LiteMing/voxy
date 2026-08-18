@@ -241,6 +241,19 @@ public class RocksDBStorageBackend extends StorageBackend {
         }
     }
 
+    /** Flushes memtables and removes write amplification before publishing an offline database. */
+    public void compactForExport() {
+        requireWritable();
+        try (var flushOptions = new FlushOptions().setWaitForFlush(true)) {
+            this.db.flush(flushOptions, List.of(this.worldSections, this.idMappings));
+            this.db.compactRange(this.worldSections);
+            this.db.compactRange(this.idMappings);
+            this.db.flushWal(true);
+        } catch (RocksDBException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public void close() {
         this.flush();

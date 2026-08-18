@@ -118,6 +118,7 @@ public final class VoxyStageCacheOptimizer {
         try {
             Files.createDirectories(staging);
             optimize(source, staging, minY, maxY, compressionLevel, shellDepth, clip, counter);
+            compactForExport(staging);
             moveIntoPlace(staging, destination);
             return new Result(source, destination, minY, maxY, counter.sourceSections,
                     counter.outputSections, counter.sourceNonAirBlocks, counter.retainedNonAirBlocks,
@@ -169,6 +170,15 @@ public final class VoxyStageCacheOptimizer {
     private static StorageBackend openStorage(Path path, boolean readOnly, int compressionLevel) {
         return new CompressionStorageAdaptor(new ZSTDCompressor(compressionLevel),
                 new RocksDBStorageBackend(path.toString(), readOnly));
+    }
+
+    private static void compactForExport(Path path) {
+        RocksDBStorageBackend storage = new RocksDBStorageBackend(path.toString(), false);
+        try {
+            storage.compactForExport();
+        } finally {
+            storage.close();
+        }
     }
 
     private static void copyMappings(Int2ObjectOpenHashMap<byte[]> mappings,
