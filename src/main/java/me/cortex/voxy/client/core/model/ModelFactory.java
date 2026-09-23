@@ -262,10 +262,19 @@ public class ModelFactory {
     public void processAllThings() {
         var biomeEntry = this.biomeQueue.poll();
         while (biomeEntry != null) {
-            var biomeRegistry = Minecraft.getInstance().level.registryAccess().registryOrThrow(Registries.BIOME);
-            var res = this.addBiome0(biomeEntry.id, biomeRegistry.getOptional(ResourceLocation.tryParse(biomeEntry.biome)).orElseThrow());
-            if (res != null) {
-                this.uploadResults.add(res);
+            var level = Minecraft.getInstance().level;
+            if (level != null) {
+                var biomeRegistry = level.registryAccess().registryOrThrow(Registries.BIOME);
+                var loc = ResourceLocation.tryParse(biomeEntry.biome);
+                var optBiome = loc != null ? biomeRegistry.getOptional(loc) : java.util.Optional.<Biome>empty();
+                if (optBiome.isEmpty()) {
+                    Logger.warn("Could not find biome: " + biomeEntry.biome + " using default PLAINS");
+                }
+                var biome = optBiome.orElse(DEFAULT_BIOME);
+                var res = this.addBiome0(biomeEntry.id, biome);
+                if (res != null) {
+                    this.uploadResults.add(res);
+                }
             }
             biomeEntry = this.biomeQueue.poll();
         }
